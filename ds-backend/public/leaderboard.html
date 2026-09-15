@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Leaderboard — DataFrame Check</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<nav class="site-nav">
+  <div class="wrap">
+    <a class="brand" href="index.html">DataFrame Check <span class="brand-tag">Data Science · B.Tech IT</span></a>
+    <ul class="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="units.html">Units</a></li>
+      <li><a href="leaderboard.html" class="active">Leaderboard</a></li>
+      <li><a href="about.html">About</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main>
+  <div class="wrap">
+    <span class="eyebrow">Standings</span>
+    <h2 style="font-size: clamp(26px, 4.5vw, 34px); margin-bottom: 10px;">Leaderboard</h2>
+    <p class="lede" style="margin-bottom: 6px;">Top scores per unit, best result first.</p>
+
+    <div class="unit-tabs" id="unitTabs"></div>
+
+    <div class="lb-card">
+      <div class="lb-title" id="lbTitle">Leaderboard</div>
+      <div class="lb-list" id="lbList"><p class="lb-empty">Loading leaderboard…</p></div>
+      <p class="storage-note" id="storageNote">Heads up: this preview is running without a connected backend, so this leaderboard only reflects scores saved in your current visit — it won't be shared with other visitors until the site is hosted with persistent storage. See the About page for details.</p>
+    </div>
+  </div>
+</main>
+
+<footer class="site-footer">JNTUGV-CEV — Department of Information Technology · Python for Data Science</footer>
+
+<script src="assets/data.js"></script>
+<script src="assets/storage.js"></script>
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const requested = parseInt(params.get('unit'), 10);
+  let activeUnit = (!isNaN(requested) && requested >= 0 && requested < UNITS.length) ? requested : 0;
+
+  const tabsEl = document.getElementById('unitTabs');
+  const titleEl = document.getElementById('lbTitle');
+  const listEl = document.getElementById('lbList');
+
+  function renderTabs() {
+    tabsEl.innerHTML = '';
+    UNITS.forEach((u, idx) => {
+      const tab = document.createElement('button');
+      tab.className = 'unit-tab' + (idx === activeUnit ? ' active' : '');
+      tab.textContent = `Unit ${toRoman(idx + 1)}`;
+      tab.addEventListener('click', () => {
+        activeUnit = idx;
+        renderTabs();
+        loadAndRender();
+      });
+      tabsEl.appendChild(tab);
+    });
+  }
+
+  async function loadAndRender() {
+    const unit = UNITS[activeUnit];
+    titleEl.textContent = `Leaderboard — ${unit.title}`;
+    listEl.innerHTML = '<p class="lb-empty">Loading leaderboard…</p>';
+    const entries = await ccLoadLeaderboard(activeUnit);
+    ccRenderLeaderboardRows(listEl, entries, null);
+    ccShowStorageNoteIfLocal(document.getElementById('storageNote'));
+  }
+
+  renderTabs();
+  loadAndRender();
+</script>
+</body>
+</html>

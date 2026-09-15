@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Science Word Search (10 Words)</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            color: #38bdf8;
+            margin-bottom: 4px;
+            text-align: center;
+        }
+        p.subtitle {
+            color: #94a3b8;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+        .header-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            max-width: 520px;
+            margin-bottom: 12px;
+            font-weight: 700;
+            font-size: 1.1em;
+        }
+        .timer {
+            color: #f59e0b;
+        }
+        .found-count {
+            color: #38bdf8;
+        }
+        .grid-container {
+            background: #1e293b;
+            padding: 16px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 5px;
+            width: 100%;
+            max-width: 520px;
+            touch-action: none;
+        }
+        .cell {
+            aspect-ratio: 1;
+            background: #334155;
+            color: #f8fafc;
+            font-size: 1.05em;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.15s, transform 0.1s;
+        }
+        .cell:hover {
+            background: #475569;
+        }
+        .cell.selecting {
+            background: #38bdf8 !important;
+            color: #0f172a !important;
+            transform: scale(1.08);
+            cursor: pointer;
+        }
+        .cell.found {
+            background: #22c55e !important;
+            color: #ffffff !important;
+        }
+        .cell.wrong {
+            background: #ef4444 !important;
+            color: #ffffff !important;
+            transform: scale(1.08);
+            cursor: not-allowed;
+            animation: shake 0.3s ease;
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0) scale(1.08); }
+            25% { transform: translateX(-3px) scale(1.08); }
+            75% { transform: translateX(3px) scale(1.08); }
+        }
+        .word-bank {
+            margin-top: 20px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 520px;
+        }
+        .word-tag {
+            background: #334155;
+            color: #cbd5e1;
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-weight: 600;
+            font-size: 0.82em;
+        }
+        .word-tag.found-tag {
+            background: #15803d;
+            color: #f0fdf4;
+            text-decoration: line-through;
+        }
+
+        /* Overlay Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15, 23, 42, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .modal-card {
+            background: #1e293b;
+            padding: 28px;
+            border-radius: 16px;
+            border: 2px solid #38bdf8;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+            max-width: 440px;
+            width: 90%;
+            text-align: center;
+        }
+        .modal-card h2 {
+            color: #4ade80;
+            margin-top: 0;
+            font-size: 1.8em;
+        }
+        .input-group {
+            margin: 16px 0;
+            display: flex;
+            gap: 8px;
+        }
+        .input-group input {
+            flex: 1;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #475569;
+            background: #0f172a;
+            color: #ffffff;
+            font-size: 1em;
+        }
+        .btn {
+            padding: 10px 20px;
+            background: #38bdf8;
+            color: #0f172a;
+            border: none;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 1em;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn:hover {
+            background: #0284c7;
+            color: #ffffff;
+        }
+        .leaderboard-table {
+            width: 100%;
+            margin-top: 16px;
+            border-collapse: collapse;
+            font-size: 0.95em;
+        }
+        .leaderboard-table th, .leaderboard-table td {
+            padding: 8px;
+            border-bottom: 1px solid #334155;
+            text-align: center;
+        }
+        .leaderboard-table th {
+            color: #38bdf8;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Data Science Word Search</h1>
+    <p class="subtitle">Find all 10 words hidden horizontally and vertically!</p>
+
+    <div class="header-bar">
+        <div class="timer" id="timer">Time: 0s</div>
+        <div class="found-count" id="found-count">Found: 0 / 10</div>
+    </div>
+
+    <div class="grid-container" id="grid"></div>
+
+    <div class="word-bank" id="word-bank"></div>
+
+    <!-- Completion Modal -->
+    <div class="modal-overlay" id="modal">
+        <div class="modal-card">
+            <h2>🎉 Congratulations! 🎉</h2>
+            <p id="time-summary">You found all 10 words in 0 seconds!</p>
+            
+            <div id="save-score-section">
+                <p style="font-size: 0.9em; color: #94a3b8;">Enter your name for the Leaderboard:</p>
+                <div class="input-group">
+                    <input type="text" id="player-name" placeholder="Your Name" maxlength="15">
+                    <button class="btn" onclick="saveScore()">Save Score</button>
+                </div>
+            </div>
+
+            <h3 style="color: #38bdf8; margin-top: 20px;">🏆 Leaderboard</h3>
+            <table class="leaderboard-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Name</th>
+                        <th>Time</th>
+                    </tr>
+                </thead>
+                <tbody id="leaderboard-body"></tbody>
+            </table>
+
+            <button class="btn" style="margin-top: 20px; width: 100%;" onclick="resetGame()">Play Again</button>
+        </div>
+    </div>
+
+    <script>
+        const targetWords = [
+            "PROBABILITY", 
+            "STATISTICS", 
+            "REGRESSION", 
+            "CLUSTERING", 
+            "CLEANING", 
+            "VARIANCE", 
+            "OUTLIERS", 
+            "PYTHON", 
+            "SQL", 
+            "EDA"
+        ];
+        
+        const GRID_SIZE = 12;
+        let gridData = [];
+        let foundWords = new Set();
+        let isDragging = false;
+        let selectedCells = [];
+        let seconds = 0;
+        let timerInterval = null;
+
+        // --- 1. Jumbled Grid Generator (Horizontal & Vertical) ---
+        function generateJumbledGrid() {
+            gridData = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(''));
+
+            const sortedWords = [...targetWords].sort((a, b) => b.length - a.length);
+
+            sortedWords.forEach((word) => {
+                let placed = false;
+                let attempts = 0;
+
+                while (!placed && attempts < 300) {
+                    attempts++;
+                    // Alternates/randomizes between horizontal (true) and vertical (false)
+                    const isHorizontal = attempts % 2 === 0;
+
+                    const maxR = isHorizontal ? GRID_SIZE : GRID_SIZE - word.length + 1;
+                    const maxC = isHorizontal ? GRID_SIZE - word.length + 1 : GRID_SIZE;
+
+                    if (maxR <= 0 || maxC <= 0) continue;
+
+                    const row = Math.floor(Math.random() * maxR);
+                    const col = Math.floor(Math.random() * maxC);
+
+                    let canPlace = true;
+                    for (let i = 0; i < word.length; i++) {
+                        const r = isHorizontal ? row : row + i;
+                        const c = isHorizontal ? col + i : col;
+                        if (gridData[r][c] !== '' && gridData[r][c] !== word[i]) {
+                            canPlace = false;
+                            break;
+                        }
+                    }
+
+                    if (canPlace) {
+                        for (let i = 0; i < word.length; i++) {
+                            const r = isHorizontal ? row : row + i;
+                            const c = isHorizontal ? col + i : col;
+                            gridData[r][c] = word[i];
+                        }
+                        placed = true;
+                    }
+                }
+            });
+
+            // Fill empty cells with random jumbled letters
+            const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            for (let r = 0; r < GRID_SIZE; r++) {
+                for (let c = 0; c < GRID_SIZE; c++) {
+                    if (gridData[r][c] === '') {
+                        gridData[r][c] = alphabet[Math.floor(Math.random() * alphabet.length)];
+                    }
+                }
+            }
+        }
+
+        // --- 2. Grid Render & Cursor Drag ---
+        function initGrid() {
+            generateJumbledGrid();
+            const gridEl = document.getElementById('grid');
+            gridEl.innerHTML = '';
+
+            for (let r = 0; r < GRID_SIZE; r++) {
+                for (let c = 0; c < GRID_SIZE; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.innerText = gridData[r][c];
+
+                    cell.addEventListener('mousedown', () => startSelection(cell));
+                    cell.addEventListener('mouseenter', () => continueSelection(cell));
+
+                    gridEl.appendChild(cell);
+                }
+            }
+
+            document.addEventListener('mouseup', endSelection);
+            gridEl.addEventListener('touchstart', handleTouchStart);
+            gridEl.addEventListener('touchmove', handleTouchMove);
+            gridEl.addEventListener('touchend', endSelection);
+
+            renderWordBank();
+            startTimer();
+        }
+
+        function startTimer() {
+            clearInterval(timerInterval);
+            seconds = 0;
+            document.getElementById('timer').innerText = `Time: 0s`;
+            timerInterval = setInterval(() => {
+                seconds++;
+                document.getElementById('timer').innerText = `Time: ${seconds}s`;
+            }, 1000);
+        }
+
+        function startSelection(cell) {
+            // Ignore new selections while a "wrong" flash is still animating,
+            // so a fresh drag can't get tangled up with the reset in progress.
+            if (isDragging === 'locked') return;
+            isDragging = true;
+            selectedCells = [cell];
+            cell.classList.add('selecting');
+        }
+
+        function continueSelection(cell) {
+            if (!isDragging || isDragging === 'locked') return;
+
+            // Backtracking: if the player drags back onto the cell just
+            // before the current end of the selection, they overshot —
+            // drop that last (extra) letter instead of adding anything.
+            if (selectedCells.length > 1 && cell === selectedCells[selectedCells.length - 2]) {
+                const removed = selectedCells.pop();
+                removed.classList.remove('selecting');
+                return;
+            }
+
+            if (!selectedCells.includes(cell)) {
+                selectedCells.push(cell);
+                cell.classList.add('selecting');
+            }
+        }
+
+        function endSelection() {
+            if (!isDragging || isDragging === 'locked') return;
+            isDragging = false;
+
+            const word = selectedCells.map(c => c.innerText).join('');
+            const reversedWord = word.split('').reverse().join('');
+
+            let matched = null;
+            if (targetWords.includes(word) && !foundWords.has(word)) matched = word;
+            else if (targetWords.includes(reversedWord) && !foundWords.has(reversedWord)) matched = reversedWord;
+
+            if (matched) {
+                foundWords.add(matched);
+                selectedCells.forEach(c => {
+                    c.classList.remove('selecting');
+                    c.classList.add('found');
+                });
+                selectedCells = [];
+                renderWordBank();
+                checkCompletion();
+            } else if (selectedCells.length > 1) {
+                // Wrong selection: flash red with a little shake, then reset
+                // back to the normal, unselected look and cursor.
+                const wrongCells = selectedCells;
+                isDragging = 'locked';
+                wrongCells.forEach(c => {
+                    c.classList.remove('selecting');
+                    c.classList.add('wrong');
+                });
+                setTimeout(() => {
+                    wrongCells.forEach(c => c.classList.remove('wrong'));
+                    isDragging = false;
+                }, 350);
+                selectedCells = [];
+            } else {
+                // A single-cell click that matched nothing — just clear it,
+                // no need for the wrong-flash treatment.
+                selectedCells.forEach(c => c.classList.remove('selecting'));
+                selectedCells = [];
+            }
+        }
+
+        function handleTouchStart(e) {
+            const touch = e.touches[0];
+            const target = document.elementFromPoint(touch.clientX, touch.clientY);
+            if (target && target.classList.contains('cell')) startSelection(target);
+        }
+
+        function handleTouchMove(e) {
+            const touch = e.touches[0];
+            const target = document.elementFromPoint(touch.clientX, touch.clientY);
+            if (target && target.classList.contains('cell')) continueSelection(target);
+        }
+
+        function renderWordBank() {
+            const bankEl = document.getElementById('word-bank');
+            bankEl.innerHTML = '';
+            targetWords.forEach(w => {
+                const tag = document.createElement('div');
+                tag.className = 'word-tag' + (foundWords.has(w) ? ' found-tag' : '');
+                tag.innerText = w;
+                bankEl.appendChild(tag);
+            });
+            document.getElementById('found-count').innerText = `Found: ${foundWords.size} / ${targetWords.length}`;
+        }
+
+        // --- 3. Leaderboard & Completion ---
+        function checkCompletion() {
+            if (foundWords.size === targetWords.length) {
+                clearInterval(timerInterval);
+                document.getElementById('time-summary').innerText = `You found all 10 words in ${seconds} seconds!`;
+                document.getElementById('save-score-section').style.display = 'block';
+                loadLeaderboard();
+                document.getElementById('modal').classList.add('active');
+            }
+        }
+
+        function saveScore() {
+            const nameInput = document.getElementById('player-name');
+            const name = nameInput.value.trim() || 'Anonymous';
+            
+            let leaderboard = JSON.parse(localStorage.getItem('ds_puzzle_10words_leaderboard') || '[]');
+            leaderboard.push({ name, time: seconds });
+            leaderboard.sort((a, b) => a.time - b.time);
+            leaderboard = leaderboard.slice(0, 5);
+
+            localStorage.setItem('ds_puzzle_10words_leaderboard', JSON.stringify(leaderboard));
+            document.getElementById('save-score-section').style.display = 'none';
+            loadLeaderboard();
+        }
+
+        function loadLeaderboard() {
+            const tbody = document.getElementById('leaderboard-body');
+            tbody.innerHTML = '';
+            const leaderboard = JSON.parse(localStorage.getItem('ds_puzzle_10words_leaderboard') || '[]');
+
+            if (leaderboard.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3">No scores yet. Be the first!</td></tr>';
+                return;
+            }
+
+            leaderboard.forEach((item, idx) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${idx + 1}</td><td>${item.name}</td><td>${item.time}s</td>`;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function resetGame() {
+            foundWords.clear();
+            document.getElementById('modal').classList.remove('active');
+            initGrid();
+        }
+
+        initGrid();
+    </script>
+</body>
+</html>

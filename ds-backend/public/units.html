@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Units — DataFrame Check</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<nav class="site-nav">
+  <div class="wrap">
+    <a class="brand" href="index.html">DataFrame Check <span class="brand-tag">Data Science · B.Tech IT</span></a>
+    <ul class="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="units.html" class="active">Units</a></li>
+      <li><a href="leaderboard.html">Leaderboard</a></li>
+      <li><a href="about.html">About</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main>
+  <div class="wrap">
+    <span class="eyebrow">Choose a unit</span>
+    <h2 style="font-size: clamp(26px, 4.5vw, 34px); margin-bottom: 10px;">Five units, ten questions each</h2>
+    <p class="lede" style="margin-bottom: 30px;">Pick up wherever you need it — each unit's quiz stands on its own.</p>
+
+    <div class="name-row">
+      <label for="playerName">your name</label>
+      <input id="playerName" type="text" maxlength="24" placeholder="e.g. Priya" autocomplete="off">
+      <button id="saveNameBtn" class="btn primary" type="button">Save name</button>
+      <span class="name-hint" id="nameStatus">used on the leaderboard, visible to everyone taking this quiz</span>
+    </div>
+
+    <div class="units" id="unitList"></div>
+  </div>
+</main>
+
+<footer class="site-footer">JNTUGV-CEV — Department of Information Technology · Python for Data Science</footer>
+
+<script src="assets/data.js"></script>
+<script src="assets/storage.js"></script>
+<script>
+  const playerNameInput = document.getElementById('playerName');
+  ccLoadStoredName(playerNameInput);
+  ccWatchNameInput(playerNameInput);
+
+  const unitList = document.getElementById('unitList');
+  UNITS.forEach((u, idx) => {
+    const card = document.createElement('div');
+    card.className = 'unit-card';
+    card.innerHTML = `
+      <div class="unit-num">${String(idx + 1).padStart(2, '0')}</div>
+      <div class="unit-body">
+        <h3>${u.title}</h3>
+        <p>${u.desc}</p>
+      </div>
+      <div class="card-actions">
+        <a class="lb-link" href="leaderboard.html?unit=${idx}">leaderboard</a>
+        <a class="go" href="quiz.html?unit=${idx}">start →</a>
+      </div>
+    `;
+    unitList.appendChild(card);
+  });
+</script>
+</body>
+</html>
